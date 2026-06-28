@@ -1,29 +1,22 @@
-const express = require('express');
-const http = require('http');
-const WebSocket = require('ws');
-const cors = require('cors');
-
-const app = express();
-const PORT = process.env.PORT || 10000;
-
-app.use(cors());
-app.use(express.json());
-
-const server = http.createServer(app);
-const wss = new WebSocket.Server({ server });
-
-// WebSocket
-wss.on('connection', ws => {
-  ws.on('message', msg => {
-    wss.clients.forEach(c => {
-      if (c.readyState === WebSocket.OPEN) c.send(msg.toString());
-    });
-  });
-});
-
-// Route สำหรับรับข้อมูลโดเนต
+// ปรับปรุงส่วน app.post('/donate')
 app.post('/donate', (req, res) => {
-  res.status(200).send({ status: "ok" });
-});
+    const { name, amount, message } = req.body;
+    
+    // สร้าง object ข้อมูล
+    const donationData = { 
+        type: 'donation', 
+        name, 
+        amount, 
+        message, 
+        time: Date.now() 
+    };
 
-server.listen(PORT, () => console.log('Server running on port', PORT));
+    // กระจายข้อมูลให้ทุกคนที่เชื่อมต่อ WebSocket อยู่
+    wss.clients.forEach(c => {
+        if (c.readyState === WebSocket.OPEN) {
+            c.send(JSON.stringify(donationData));
+        }
+    });
+
+    res.status(200).send({ status: "success" });
+});
